@@ -1,0 +1,11 @@
+host: 0.0.0.0
+port: 3000
+
+nexa:
+  ## IP address of the Nexa Bridge. By default this will
+  ## be detected automatically. Uncomment below to set manually.
+  # address:
+  socket_port: 8887
+  ## Username and password for Nexa Bridge
+  # username: 
+  # password:

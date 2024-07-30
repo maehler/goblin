@@ -1,0 +1,47 @@
+{{ define "title" }}Rooms{{ end }}
+
+{{ define "header" }}
+<h1 class="text-4xl">Rooms</h1>
+{{ end }}
+
+{{ define "device" }}
+<div class="inline-block" data-device-id="{{ .Id }}">
+    {{ if .LastEvents.temperature }}
+        <div class="temperature">
+            <p>
+                <span class="temperature-value">{{ .LastEvents.temperature.Value }}</span>˚C
+            </p>
+        </div>
+    {{ end }}
+
+    {{ if .LastEvents.humidity }}
+        <div class="humidity">
+            <p>
+                <span class="humidity-value">{{ .LastEvents.humidity.Value }}</span>%
+            </p>
+        </div>
+    {{ end }}
+</div>
+{{ end }}
+
+{{ define "content" }}
+<div class="grid grid-cols-3 gap-4">
+    {{ range . }}
+    <div class="h-48" style="{{ if .BackgroundImage }}background-image: url({{ .BackgroundImage }}); background-size: contain;{{ end }}">
+        <header class="flex justify-between bg-black bg-opacity-60 p-4 text-white">
+            <div>
+                <h2 class="text-2xl">{{ .Name }}</h2>
+            </div>
+            {{ if .TempSensor }}
+                <div hx-get="/devices/{{ .TempSensor }}" hx-trigger="load" hx-swap="outerHTML">
+                </div>
+            {{ end }}
+        </header>
+        <div>
+        </div>
+    </div>
+    {{ end }}
+</div>
+
+<script src="/js/sockets.js"></script>
+{{ end }}
