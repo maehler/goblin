@@ -32,6 +32,7 @@ type NexaNodes []NexaNode
 type NexaNode struct {
 	Id           string               `json:"id"`
 	Name         string               `json:"name"`
+	RoomId       string               `json:"roomId"`
 	Capabilities []string             `json:"capabilities"`
 	LastEvents   map[string]NexaEvent `json:"lastEvents"`
 }
@@ -46,10 +47,12 @@ type NexaEvent struct {
 type NexaRooms []NexaRoom
 
 type NexaRoom struct {
-	Id              string `json:"id"`
-	Name            string `json:"name"`
-	TempSensor      string `json:"tempSensor"`
-	BackgroundImage string `json:"backURL"`
+	Id              string               `json:"id"`
+	Name            string               `json:"name"`
+	TempSensor      string               `json:"tempSensor"`
+	BackgroundImage string               `json:"backURL"`
+	NodeEvents      map[string]NexaEvent `json:"nodeEvents"`
+	Nodes           NexaNodes
 }
 
 func NewNexaConfig() *NexaConfig {
@@ -165,6 +168,25 @@ func (n *Nexa) Rooms() (*NexaRooms, error) {
 	if err := json.Unmarshal(body, rooms); err != nil {
 		return nil, err
 	}
+
+	roomIds := make(map[string]int)
+	for i, room := range *rooms {
+		roomIds[room.Id] = i
+	}
+
+	nodes, err := n.Nodes()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, node := range *nodes {
+		if node.RoomId == "" {
+			continue
+		}
+		roomIndex := roomIds[node.RoomId]
+		(*rooms)[roomIndex].Nodes = append((*rooms)[roomIndex].Nodes, node)
+	}
+
 	return rooms, nil
 }
 
@@ -240,25 +262,48 @@ func IdentifyNexa() (nexaIp string, err error) {
 }
 
 type Message struct {
-	SystemType string      `json:"systemType"`
-	Subtype    string      `json:"subtype"`
-	SourceNode string      `json:"sourceNode"`
-	Capability string      `json:"capability"`
-	Name       string      `json:"name"`
-	Value      interface{} `json:"value"`
-	Time       time.Time   `json:"time"`
-	Event      string      `json:"event"`
-	NodeId     string      `json:"nodeId"`
+	SystemType   string      `json:"systemType"`
+	Subtype      string      `json:"subtype"`
+	SourceNode   string      `json:"sourceNode"`
+	Capability   string      `json:"capability"`
+	Name         string      `json:"name"`
+	Value        interface{} `json:"value"`
+	Time         time.Time   `json:"time"`
+	Event        string      `json:"event"`
+	NodeId       string      `json:"nodeId"`
+	InternalType string
+}
+
+func (m *Message) String() string {
+	s := ""
+	if m.Name != "" {
+		s += m.Name + " "
+	}
+	s += fmt.Sprintf("%s.%s: %v", m.SystemType, m.Subtype, m.Value)
+	return s
 }
 
 func ParseMessage(message string) (*Message, error) {
+	internalType := ""
 	switch {
 	case strings.HasPrefix(message, "temperature:"):
 		message = strings.TrimPrefix(message, "temperature:")
+		internalType = "temperature"
 	case strings.HasPrefix(message, "humidity:"):
 		message = strings.TrimPrefix(message, "humidity:")
+		internalType = "humidity"
 	case strings.HasPrefix(message, "nodeManager:"):
 		message = strings.TrimPrefix(message, "nodeManager:")
+		internalType = "nodeManager"
+	case strings.HasPrefix(message, "notificationContact:"):
+		message = strings.TrimPrefix(message, "notificationContact:")
+		internalType = "notificationContact"
+	case strings.HasPrefix(message, "switchLevel:"):
+		message = strings.TrimPrefix(message, "switchLevel:")
+		internalType = "switchLevel"
+	case strings.HasPrefix(message, "switchBinary:"):
+		message = strings.TrimPrefix(message, "switchBinary:")
+		internalType = "switchBinary"
 	}
 
 	m := &Message{}
@@ -266,6 +311,10 @@ func ParseMessage(message string) (*Message, error) {
 	if err != nil {
 		return nil, err
 	}
+	if m.SystemType == "time" && m.Subtype == "clock" {
+		internalType = "clock"
+	}
+	m.InternalType = internalType
 	return m, nil
 }
 

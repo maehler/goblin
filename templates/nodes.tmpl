@@ -1,0 +1,27 @@
+{{ define "temperature" }}
+<div id="{{ .SourceNode }}-temperature">
+    <p>{{ .Value }}˚C</p>
+</div>
+{{ end }}
+
+{{ define "humidity" }}
+<div id="{{ .SourceNode }}-humidity">
+    <p>{{ .Value }}%</p>
+</div>
+{{ end }}
+
+{{ define "notificationContact" }}
+<div id="{{ .SourceNode }}">
+    {{ if .Value }}
+    <p><i class="bi-door-open-fill"></i></p>
+    {{ else }}
+    <p><i class="bi-door-closed-fill"></i></p>
+    {{ end }}
+</div>
+{{ end }}
+
+{{ define "clock" }}
+<div id="time" hx-swap-oob="true">
+    <p>{{ .Value }}</p>
+</div>
+{{ end }}

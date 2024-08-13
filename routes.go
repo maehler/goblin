@@ -1,9 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"embed"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
@@ -23,7 +23,7 @@ var templates embed.FS
 var static embed.FS
 
 type subscriber struct {
-	messages chan *Message
+	messages chan string
 	ip       string
 }
 
@@ -32,6 +32,15 @@ type server struct {
 	mux             *http.ServeMux
 	subscriberMutex sync.Mutex
 	subscribers     map[subscriber]bool
+}
+
+func hasString(slice []string, value string) bool {
+	for _, v := range slice {
+		if v == value {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *server) nodesHandler(w http.ResponseWriter, r *http.Request) {
@@ -50,12 +59,21 @@ func (s *server) roomsHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("error: %+v", err.Error())))
 		return
 	}
-	t := template.Must(template.ParseFS(
+	t := template.New("layout.tmpl")
+	t = t.Funcs(template.FuncMap{
+		"has": hasString,
+	})
+	t, err = t.ParseFS(
 		templates,
 		"templates/layout.tmpl",
 		"templates/rooms.tmpl",
-	))
-	t.Execute(w, rooms)
+	)
+	if err != nil {
+		log.Println("error parsing template:", err.Error())
+	}
+	if err := t.ExecuteTemplate(w, "layout.tmpl", rooms); err != nil {
+		log.Println("error executing template:", err.Error())
+	}
 }
 
 func (s *server) deviceHandler(w http.ResponseWriter, r *http.Request) {
@@ -89,7 +107,7 @@ func (s *server) removeSubscriber(subscriber *subscriber) {
 func (s *server) subscribe(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	var c *websocket.Conn
 	subscriber := &subscriber{
-		messages: make(chan *Message),
+		messages: make(chan string),
 		ip:       r.RemoteAddr,
 	}
 	s.addSubscriber(subscriber)
@@ -109,11 +127,7 @@ func (s *server) subscribe(ctx context.Context, w http.ResponseWriter, r *http.R
 		case msg := <-subscriber.messages:
 			ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 			defer cancel()
-			jsonMsg, err := json.Marshal(msg)
-			if err != nil {
-				return err
-			}
-			if err := c.Write(ctx, websocket.MessageText, jsonMsg); err != nil {
+			if err := c.Write(ctx, websocket.MessageText, []byte(msg)); err != nil {
 				return err
 			}
 		}
@@ -135,17 +149,24 @@ func (s *server) subscribeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *server) broadcast(msg *Message) {
-	log.Printf("broadcasting message: %+v", msg)
+func (s *server) broadcast(msg *Message) error {
+	log.Printf("processing %q message", msg.InternalType)
+	t := template.Must(template.ParseFS(templates, "templates/nodes.tmpl"))
+	var htmlMsg bytes.Buffer
+	if err := t.ExecuteTemplate(&htmlMsg, msg.InternalType, msg); err != nil {
+		return err
+	}
+
 	s.subscriberMutex.Lock()
 	defer s.subscriberMutex.Unlock()
 	for subscriber := range s.subscribers {
-		subscriber.messages <- msg
+		subscriber.messages <- htmlMsg.String()
 	}
+
+	return nil
 }
 
 func NewServer(messages chan *Message) *server {
-	// mux := http.NewServeMux()
 	nexa := &Nexa{
 		Config: NewNexaConfig(),
 	}
@@ -176,8 +197,10 @@ func NewServer(messages chan *Message) *server {
 
 	go func(messages chan *Message) {
 		for msg := range messages {
-			log.Printf("%d subscribers", len(s.subscribers))
-			s.broadcast(msg)
+			log.Printf("broadcasting to %d subscribers: %s", len(s.subscribers), msg)
+			if err := s.broadcast(msg); err != nil {
+				log.Println("broadcast error:", err.Error())
+			}
 		}
 	}(messages)
 

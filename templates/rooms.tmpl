@@ -4,20 +4,24 @@
 <h1 class="text-4xl">Rooms</h1>
 {{ end }}
 
-{{ define "device" }}
-<div class="inline-block" data-device-id="{{ .Id }}">
-    {{ if .LastEvents.temperature }}
-        <div class="temperature">
-            <p>
-                <span class="temperature-value">{{ .LastEvents.temperature.Value }}</span>˚C
-            </p>
+{{ define "passivenode" }}
+<div class="inline-block" id="{{ .Id }}" data-node-id="{{ .Id }}">
+    {{ if has .Capabilities "temperature" }}
+        <div id="{{ .Id }}-temperature" class="temperature">
+            <p>{{ .LastEvents.temperature.Value }}˚C</p>
         </div>
     {{ end }}
 
-    {{ if .LastEvents.humidity }}
-        <div class="humidity">
+    {{ if has .Capabilities "humidity" }}
+        <div id="{{ .Id }}-humidity" class="humidity">
+            <p>{{ .LastEvents.humidity.Value }}%</p>
+        </div>
+    {{ end }}
+
+    {{ if has .Capabilities "notificationContact" }}
+        <div id="{{ .Id }}" class="door">
             <p>
-                <span class="humidity-value">{{ .LastEvents.humidity.Value }}</span>%
+            <i data-open="{{ .LastEvents.notificationContact.Value }}" class="data-[open=false]:bi-door-closed-fill"></i>
             </p>
         </div>
     {{ end }}
@@ -25,23 +29,27 @@
 {{ end }}
 
 {{ define "content" }}
-<div class="grid grid-cols-3 gap-4">
-    {{ range . }}
-    <div class="h-48" style="{{ if .BackgroundImage }}background-image: url({{ .BackgroundImage }}); background-size: contain;{{ end }}">
-        <header class="flex justify-between bg-black bg-opacity-60 p-4 text-white">
-            <div>
-                <h2 class="text-2xl">{{ .Name }}</h2>
-            </div>
-            {{ if .TempSensor }}
-                <div hx-get="/devices/{{ .TempSensor }}" hx-trigger="load" hx-swap="outerHTML">
-                </div>
-            {{ end }}
-        </header>
-        <div>
-        </div>
+<div hx-ext="ws" ws-connect="/ws">
+    <div id="time">
+        <p>The time should go here</p>
     </div>
-    {{ end }}
+    <div class="grid grid-cols-3 gap-4">
+        {{ range . }}
+        <div class="h-48" style="{{ if .BackgroundImage }}background-image: url({{ .BackgroundImage }}); background-size: contain;{{ end }}">
+            <header class="flex justify-between bg-black bg-opacity-60 p-4 text-white">
+                <div>
+                    <h2 class="text-2xl">{{ .Name }}</h2>
+                </div>
+                <div>
+                {{ range .Nodes }}
+                    {{ template "passivenode" . }}
+                {{ end }}
+                </div>
+            </header>
+            <div>
+            </div>
+        </div>
+        {{ end }}
+    </div>
 </div>
-
-<script src="/js/sockets.js"></script>
 {{ end }}

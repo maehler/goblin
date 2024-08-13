@@ -26,6 +26,7 @@ func config() error {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Printf("Detected Nexa at %s", nexaIP)
 	viper.SetDefault("nexa.address", nexaIP)
 
 	return viper.ReadInConfig()
@@ -46,6 +47,7 @@ func main() {
 	)
 	go MessageConsumer(stringMessages, messages)
 	server := NewServer(messages)
+	log.Printf("server running on %v:%v", viper.GetString("host"), viper.GetInt("port"))
 	http.ListenAndServe(
 		fmt.Sprintf(
 			"%v:%v",
@@ -53,5 +55,4 @@ func main() {
 			viper.GetInt("port")),
 		server.mux,
 	)
-	log.Printf("server running on %v:%v", viper.GetString("host"), viper.GetInt("port"))
 }
