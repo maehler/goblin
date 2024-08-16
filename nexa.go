@@ -38,10 +38,10 @@ type NexaConfig struct {
 type NexaNodes = []*NexaNode
 
 type NexaNode struct {
-	Id           string               `json:"id"`
-	Name         string               `json:"name"`
-	RoomId       string               `json:"roomId"`
-	Capabilities []string             `json:"capabilities"`
+	Id           string                `json:"id"`
+	Name         string                `json:"name"`
+	RoomId       string                `json:"roomId"`
+	Capabilities []string              `json:"capabilities"`
 	LastEvents   map[string]*NexaEvent `json:"lastEvents"`
 }
 
@@ -58,40 +58,40 @@ func (n NexaEvent) Id() string {
 }
 
 func (n NexaEvent) BoolValue() (bool, error) {
-    v, ok := n.Value.(bool)
-    if !ok {
-        return false, fmt.Errorf("invalid bool value: %v", n.Value)
-    }
-    return v, nil
+	v, ok := n.Value.(bool)
+	if !ok {
+		return false, fmt.Errorf("invalid bool value: %v", n.Value)
+	}
+	return v, nil
 }
 
 func (n NexaEvent) FloatValue() (float64, error) {
-    v, ok := n.Value.(float64)
-    if !ok {
-        return 0, fmt.Errorf("invalid float value: %v", n.Value)
-    }
-    return v, nil
+	v, ok := n.Value.(float64)
+	if !ok {
+		return 0, fmt.Errorf("invalid float value: %v", n.Value)
+	}
+	return v, nil
 }
 
 func (n NexaEvent) IntValue() (int, error) {
-    v, ok := n.Value.(int)
-    if !ok {
-        return 0, fmt.Errorf("invalid int value: %v", n.Value)
-    }
-    return v, nil
+	v, ok := n.Value.(int)
+	if !ok {
+		return 0, fmt.Errorf("invalid int value: %v", n.Value)
+	}
+	return v, nil
 }
 
 func (n NexaEvent) StringValue() string {
-    return fmt.Sprintf("%v", n.Value)
+	return fmt.Sprintf("%v", n.Value)
 }
 
 type NexaRooms []NexaRoom
 
 type NexaRoom struct {
-	Id              string               `json:"id"`
-	Name            string               `json:"name"`
-	TempSensor      string               `json:"tempSensor"`
-	BackgroundImage string               `json:"backURL"`
+	Id              string `json:"id"`
+	Name            string `json:"name"`
+	TempSensor      string `json:"tempSensor"`
+	BackgroundImage string `json:"backURL"`
 	Nodes           NexaNodes
 }
 
