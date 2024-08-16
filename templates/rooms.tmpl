@@ -4,30 +4,6 @@
 <h1 class="text-4xl">Rooms</h1>
 {{ end }}
 
-{{ define "passivenode" }}
-<div class="inline-block" id="{{ .Id }}" data-node-id="{{ .Id }}">
-    {{ if has .Capabilities "temperature" }}
-        <div id="{{ .Id }}-temperature" class="temperature">
-            <p>{{ .LastEvents.temperature.Value }}˚C</p>
-        </div>
-    {{ end }}
-
-    {{ if has .Capabilities "humidity" }}
-        <div id="{{ .Id }}-humidity" class="humidity">
-            <p>{{ .LastEvents.humidity.Value }}%</p>
-        </div>
-    {{ end }}
-
-    {{ if has .Capabilities "notificationContact" }}
-        <div id="{{ .Id }}" class="door">
-            <p>
-            <i data-open="{{ .LastEvents.notificationContact.Value }}" class="data-[open=false]:bi-door-closed-fill"></i>
-            </p>
-        </div>
-    {{ end }}
-</div>
-{{ end }}
-
 {{ define "content" }}
 <div hx-ext="ws" ws-connect="/ws">
     <div id="time">
@@ -42,7 +18,15 @@
                 </div>
                 <div>
                 {{ range .Nodes }}
-                    {{ template "passivenode" . }}
+                    {{ if has .Capabilities "temperature" }}
+                        {{ template "temperature" .LastEvents.temperature }}
+                    {{ end }}
+                    {{ if has .Capabilities "humidity" }}
+                        {{ template "humidity" .LastEvents.humidity }}
+                    {{ end }}
+                    {{ if has .Capabilities "notificationContact" }}
+                        {{ template "notificationContact" .LastEvents.notificationContact }}
+                    {{ end }}
                 {{ end }}
                 </div>
             </header>

@@ -17,6 +17,14 @@ import (
 	"nhooyr.io/websocket"
 )
 
+type Sensor interface {
+	Id() (string, error)
+	BoolValue() (bool, error)
+	FloatValue() (float64, error)
+	IntValue() (int, error)
+	StringValue() string
+}
+
 type Nexa struct {
 	Config *NexaConfig
 }
@@ -27,21 +35,54 @@ type NexaConfig struct {
 	Password string
 }
 
-type NexaNodes []NexaNode
+type NexaNodes = []*NexaNode
 
 type NexaNode struct {
 	Id           string               `json:"id"`
 	Name         string               `json:"name"`
 	RoomId       string               `json:"roomId"`
 	Capabilities []string             `json:"capabilities"`
-	LastEvents   map[string]NexaEvent `json:"lastEvents"`
+	LastEvents   map[string]*NexaEvent `json:"lastEvents"`
 }
 
 type NexaEvent struct {
+	NodeId    string
 	Name      string      `json:"name"`
 	Value     interface{} `json:"value"`
 	PrevValue interface{} `json:"prevValue"`
 	Time      time.Time   `json:"time"`
+}
+
+func (n NexaEvent) Id() string {
+	return n.NodeId
+}
+
+func (n NexaEvent) BoolValue() (bool, error) {
+    v, ok := n.Value.(bool)
+    if !ok {
+        return false, fmt.Errorf("invalid bool value: %v", n.Value)
+    }
+    return v, nil
+}
+
+func (n NexaEvent) FloatValue() (float64, error) {
+    v, ok := n.Value.(float64)
+    if !ok {
+        return 0, fmt.Errorf("invalid float value: %v", n.Value)
+    }
+    return v, nil
+}
+
+func (n NexaEvent) IntValue() (int, error) {
+    v, ok := n.Value.(int)
+    if !ok {
+        return 0, fmt.Errorf("invalid int value: %v", n.Value)
+    }
+    return v, nil
+}
+
+func (n NexaEvent) StringValue() string {
+    return fmt.Sprintf("%v", n.Value)
 }
 
 type NexaRooms []NexaRoom
@@ -51,7 +92,6 @@ type NexaRoom struct {
 	Name            string               `json:"name"`
 	TempSensor      string               `json:"tempSensor"`
 	BackgroundImage string               `json:"backURL"`
-	NodeEvents      map[string]NexaEvent `json:"nodeEvents"`
 	Nodes           NexaNodes
 }
 
@@ -98,6 +138,11 @@ func (n *Nexa) Nodes() (*NexaNodes, error) {
 	if err := json.Unmarshal(body, nodes); err != nil {
 		return nil, err
 	}
+	for _, node := range *nodes {
+		for _, event := range node.LastEvents {
+			event.NodeId = node.Id
+		}
+	}
 	return nodes, nil
 }
 
@@ -132,6 +177,9 @@ func (n *Nexa) Node(nodeId string) (*NexaNode, error) {
 	node := &NexaNode{}
 	if err := json.Unmarshal(body, node); err != nil {
 		return nil, err
+	}
+	for _, event := range node.LastEvents {
+		event.NodeId = node.Id
 	}
 	return node, nil
 }
@@ -274,6 +322,38 @@ type Message struct {
 	InternalType string
 }
 
+func (m Message) Id() string {
+	return m.SourceNode
+}
+
+func (m Message) BoolValue() (bool, error) {
+	v, ok := m.Value.(bool)
+	if !ok {
+		return false, fmt.Errorf("invalid bool value: %v", m.Value)
+	}
+	return v, nil
+}
+
+func (m Message) FloatValue() (float64, error) {
+	v, ok := m.Value.(float64)
+	if !ok {
+		return 0, fmt.Errorf("invalid float value: %v", m.Value)
+	}
+	return v, nil
+}
+
+func (m Message) IntValue() (int, error) {
+	v, ok := m.Value.(int)
+	if !ok {
+		return 0, fmt.Errorf("invalid int value: %v", m.Value)
+	}
+	return v, nil
+}
+
+func (m Message) StringValue() string {
+	return fmt.Sprintf("%v", m.Value)
+}
+
 func (m *Message) String() string {
 	s := ""
 	if m.Name != "" {
@@ -320,6 +400,7 @@ func ParseMessage(message string) (*Message, error) {
 
 func MessageConsumer(inputMessages chan string, outputMessages chan *Message) {
 	for msg := range inputMessages {
+		log.Println(msg)
 		m, err := ParseMessage(msg)
 		if err != nil {
 			log.Printf("error parsing message: %s: %s", err.Error(), msg)

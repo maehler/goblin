@@ -66,6 +66,7 @@ func (s *server) roomsHandler(w http.ResponseWriter, r *http.Request) {
 	t, err = t.ParseFS(
 		templates,
 		"templates/layout.tmpl",
+		"templates/nodes.tmpl",
 		"templates/rooms.tmpl",
 	)
 	if err != nil {
