@@ -400,7 +400,6 @@ func ParseMessage(message string) (*Message, error) {
 
 func MessageConsumer(inputMessages chan string, outputMessages chan *Message) {
 	for msg := range inputMessages {
-		log.Println(msg)
 		m, err := ParseMessage(msg)
 		if err != nil {
 			log.Printf("error parsing message: %s: %s", err.Error(), msg)

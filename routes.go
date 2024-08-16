@@ -151,7 +151,6 @@ func (s *server) subscribeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) broadcast(msg *Message) error {
-	log.Printf("processing %q message", msg.InternalType)
 	t := template.Must(template.ParseFS(templates, "templates/nodes.tmpl"))
 	var htmlMsg bytes.Buffer
 	if err := t.ExecuteTemplate(&htmlMsg, msg.InternalType, msg); err != nil {
