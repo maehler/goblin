@@ -197,6 +197,11 @@ func NewServer(messages chan *Message) *server {
 
 	go func(messages chan *Message) {
 		for msg := range messages {
+			if msg.InternalType == "" {
+				// Ignore message
+				log.Printf("ignoring message: %+v", msg)
+				continue
+			}
 			log.Printf("broadcasting to %d subscribers: %s", len(s.subscribers), msg)
 			if err := s.broadcast(msg); err != nil {
 				log.Println("broadcast error:", err.Error())
