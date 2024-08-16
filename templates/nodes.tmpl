@@ -1,21 +1,21 @@
 {{ define "temperature" }}
-<div id="{{ .Id }}-temperature">
+<div id="{{ .Id }}-temperature" class="mx-1">
     <p>{{ .FloatValue }}˚C</p>
 </div>
 {{ end }}
 
 {{ define "humidity" }}
-<div id="{{ .Id }}-humidity">
+<div id="{{ .Id }}-humidity" class="mx-1">
     <p>{{ .FloatValue }}%</p>
 </div>
 {{ end }}
 
 {{ define "notificationContact" }}
-<div id="{{ .Id }}">
+<div id="{{ .Id }}" class="mx-1">
     {{ if .BoolValue }}
-    <p><i class="bi-door-open-fill"></i></p>
+    <p><i class="bi-door-open-fill text-red-500"></i></p>
     {{ else }}
-    <p><i class="bi-door-closed-fill"></i></p>
+    <p><i class="bi-door-closed-fill text-green-500"></i></p>
     {{ end }}
 </div>
 {{ end }}

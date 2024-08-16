@@ -16,7 +16,7 @@
                 <div>
                     <h2 class="text-2xl">{{ .Name }}</h2>
                 </div>
-                <div>
+                <div class="flex">
                 {{ range .Nodes }}
                     {{ if has .Capabilities "temperature" }}
                         {{ template "temperature" .LastEvents.temperature }}
