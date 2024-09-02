@@ -168,7 +168,7 @@ func (s *server) broadcast(msg *Message) error {
 	}
 
 	if !foundTemplate {
-		log.Printf("template %q not found, ignoring message", useTemplate)
+		log.Printf("template %q not found, ignoring message. Full message was: %#v", useTemplate, msg)
 		return nil
 	}
 
