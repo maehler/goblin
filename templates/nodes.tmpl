@@ -35,3 +35,17 @@
     <p>{{ .StringValue }}</p>
 </div>
 {{ end }}
+
+{{ define "sun" }}
+<div id="sun" hx-swap-oob="true">
+    {{ if eq .StringValue "sunsetStart" }}
+    <i class="bi-sunset-fill"></i>
+    {{ else if eq .StringValue "down" }}
+    <i class="bi-moon-fill"></i>
+    {{ else if eq .StringValue "sunriseStart" }}
+    <i class="bi-sunrise-fill"></i>
+    {{ else if eq .StringValue "sunriseEnd" }}
+    <i class="bi-sun-fill"></i>
+    {{ end }}
+</div>
+{{ end }}

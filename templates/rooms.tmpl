@@ -6,8 +6,13 @@
 
 {{ define "content" }}
 <div hx-ext="ws" ws-connect="/ws">
-    <div id="time">
-        <p>The time should go here</p>
+    <div class="flex">
+        <div id="time">
+            <p>The time should go here</p>
+        </div>
+        <div id="sun">
+            <i class="bi-sun-fill"></i>
+        </div>
     </div>
     <div class="grid grid-cols-3 gap-4">
         {{ range . }}
