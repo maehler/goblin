@@ -9,7 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strings"
+	"regexp"
 	"time"
 
 	"github.com/maehler/goblin/auth"
@@ -310,16 +310,15 @@ func IdentifyNexa() (nexaIp string, err error) {
 }
 
 type Message struct {
-	SystemType   string      `json:"systemType"`
-	Subtype      string      `json:"subtype"`
-	SourceNode   string      `json:"sourceNode"`
-	Capability   string      `json:"capability"`
-	Name         string      `json:"name"`
-	Value        interface{} `json:"value"`
-	Time         time.Time   `json:"time"`
-	Event        string      `json:"event"`
-	NodeId       string      `json:"nodeId"`
-	InternalType string
+	SystemType string      `json:"systemType"`
+	Subtype    string      `json:"subtype"`
+	SourceNode string      `json:"sourceNode"`
+	Capability string      `json:"capability"`
+	Name       string      `json:"name"`
+	Value      interface{} `json:"value"`
+	Time       time.Time   `json:"time"`
+	Event      string      `json:"event"`
+	NodeId     string      `json:"nodeId"`
 }
 
 func (m Message) Id() string {
@@ -364,40 +363,14 @@ func (m *Message) String() string {
 }
 
 func ParseMessage(message string) (*Message, error) {
-	internalType := ""
-	switch {
-	case strings.HasPrefix(message, "temperature:"):
-		message = strings.TrimPrefix(message, "temperature:")
-		internalType = "temperature"
-	case strings.HasPrefix(message, "humidity:"):
-		message = strings.TrimPrefix(message, "humidity:")
-		internalType = "humidity"
-	case strings.HasPrefix(message, "nodeManager:"):
-		message = strings.TrimPrefix(message, "nodeManager:")
-		internalType = "nodeManager"
-	case strings.HasPrefix(message, "notificationContact:"):
-		message = strings.TrimPrefix(message, "notificationContact:")
-		internalType = "notificationContact"
-	case strings.HasPrefix(message, "switchLevel:"):
-		message = strings.TrimPrefix(message, "switchLevel:")
-		internalType = "switchLevel"
-	case strings.HasPrefix(message, "switchBinary:"):
-		message = strings.TrimPrefix(message, "switchBinary:")
-		internalType = "switchBinary"
-	case strings.HasPrefix(message, "notificationPushButton:"):
-		message = strings.TrimPrefix(message, "notificationPushButton:")
-		internalType = "notificationPushButton"
-	}
+	prefixRe := regexp.MustCompile("^[^{]+")
+	message = prefixRe.ReplaceAllString(message, "")
 
 	m := &Message{}
 	err := json.Unmarshal([]byte(message), m)
 	if err != nil {
 		return nil, err
 	}
-	if m.SystemType == "time" && m.Subtype == "clock" {
-		internalType = "clock"
-	}
-	m.InternalType = internalType
 	return m, nil
 }
 

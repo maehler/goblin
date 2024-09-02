@@ -151,9 +151,29 @@ func (s *server) subscribeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) broadcast(msg *Message) error {
+	var useTemplate string
+	if msg.Capability != "" {
+		useTemplate = msg.Capability
+	} else if msg.SystemType == "time" {
+		useTemplate = msg.Subtype
+	}
+
+	foundTemplate := false
 	t := template.Must(template.ParseFS(templates, "templates/nodes.tmpl"))
+	for _, tmpl := range t.Templates() {
+		if tmpl.Name() == useTemplate {
+			foundTemplate = true
+			break
+		}
+	}
+
+	if !foundTemplate {
+		log.Printf("template %q not found, ignoring message", useTemplate)
+		return nil
+	}
+
 	var htmlMsg bytes.Buffer
-	if err := t.ExecuteTemplate(&htmlMsg, msg.InternalType, msg); err != nil {
+	if err := t.ExecuteTemplate(&htmlMsg, useTemplate, msg); err != nil {
 		return err
 	}
 
@@ -197,11 +217,6 @@ func NewServer(messages chan *Message) *server {
 
 	go func(messages chan *Message) {
 		for msg := range messages {
-			if msg.InternalType == "" {
-				// Ignore message
-				log.Printf("ignoring message: %+v", msg)
-				continue
-			}
 			log.Printf("broadcasting to %d subscribers: %s", len(s.subscribers), msg)
 			if err := s.broadcast(msg); err != nil {
 				log.Println("broadcast error:", err.Error())
