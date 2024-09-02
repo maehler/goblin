@@ -20,6 +20,16 @@
 </div>
 {{ end }}
 
+{{ define "notificationPushButton" }}
+<div id="{{ .Id }}" class="mx-1">
+    {{ if .BoolValue }}
+    <p title="{{ .Time }}"><time datetime="{{ .Time }}"><i class="bi-bell-fill text-yellow-500"></time></i></p>
+    {{ else }}
+    <p><i class="bi-bell"></i></p>
+    {{ end }}
+</div>
+{{ end }}
+
 {{ define "clock" }}
 <div id="time" hx-swap-oob="true">
     <p>{{ .StringValue }}</p>

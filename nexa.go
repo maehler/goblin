@@ -384,6 +384,9 @@ func ParseMessage(message string) (*Message, error) {
 	case strings.HasPrefix(message, "switchBinary:"):
 		message = strings.TrimPrefix(message, "switchBinary:")
 		internalType = "switchBinary"
+	case strings.HasPrefix(message, "notificationPushButton:"):
+		message = strings.TrimPrefix(message, "notificationPushButton:")
+		internalType = "notificationPushButton"
 	}
 
 	m := &Message{}

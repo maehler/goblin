@@ -27,6 +27,9 @@
                     {{ if has .Capabilities "notificationContact" }}
                         {{ template "notificationContact" .LastEvents.notificationContact }}
                     {{ end }}
+                    {{ if has .Capabilities "notificationPushButton" }}
+                        {{ template "notificationPushButton" .LastEvents.notificationPushButton }}
+                    {{ end }}
                 {{ end }}
                 </div>
             </header>
