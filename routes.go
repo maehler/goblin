@@ -85,6 +85,7 @@ func (s *server) roomsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.templates.ExecuteTemplate(w, "layout.tmpl", M{"rooms": rooms, "time": time.Now()}); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		log.Println("error executing template:", err.Error())
 	}
 }
@@ -96,7 +97,10 @@ func (s *server) deviceHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("error: %+v", err.Error())))
 		return
 	}
-	s.templates.ExecuteTemplate(w, "device", device)
+	if err := s.templates.ExecuteTemplate(w, "device", device); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("error executing template: %s", err.Error())
+	}
 }
 
 func (s *server) addSubscriber(subscriber *subscriber) {
