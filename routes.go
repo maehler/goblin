@@ -82,7 +82,7 @@ func (s *server) roomsHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("error: %+v", err.Error())))
 		return
 	}
-	if err := s.templates.ExecuteTemplate(w, "layout.tmpl", rooms); err != nil {
+	if err := s.templates.ExecuteTemplate(w, "layout.tmpl", map[string]any{"rooms": rooms, "time": time.Now()}); err != nil {
 		log.Println("error executing template:", err.Error())
 	}
 }

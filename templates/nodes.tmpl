@@ -32,7 +32,11 @@
 
 {{ define "clock" }}
 <div id="time" hx-swap-oob="true">
+    {{ if eq "time.Time" (printf "%T" .) }}
+    <p>{{ .Local.Format "15:04" }}</p>
+    {{ else }}
     <p>{{ .StringValue }}</p>
+    {{ end }}
 </div>
 {{ end }}
 

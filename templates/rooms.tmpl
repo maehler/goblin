@@ -6,16 +6,8 @@
 
 {{ define "content" }}
 <div hx-ext="ws" ws-connect="/ws">
-    <div class="flex">
-        <div id="time">
-            <p>The time should go here</p>
-        </div>
-        <div id="sun">
-            <i class="bi-sun-fill"></i>
-        </div>
-    </div>
     <div class="grid grid-cols-3 gap-4">
-        {{ range . }}
+        {{ range .rooms }}
         <div class="h-48" style="{{ if .BackgroundImage }}background-image: url({{ .BackgroundImage }}); background-size: contain;{{ end }}">
             <header class="flex justify-between bg-black bg-opacity-60 p-4 text-white">
                 <div>
