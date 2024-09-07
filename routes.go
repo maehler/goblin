@@ -17,7 +17,7 @@ import (
 )
 
 //go:embed templates
-var templates embed.FS
+var templateFS embed.FS
 
 //go:embed all:static
 var static embed.FS
@@ -27,11 +27,34 @@ type subscriber struct {
 	ip       string
 }
 
+type templateHandler struct {
+	templates *template.Template
+}
+
+func newTemplateHandler(fs fs.FS) *templateHandler {
+	t := template.New("")
+	t.Funcs(template.FuncMap{
+		"has": hasString,
+	})
+	t = template.Must(t.ParseFS(fs, "templates/*.tmpl"))
+	return &templateHandler{t}
+}
+
+func (t templateHandler) HasTemplate(name string) bool {
+	for _, t := range t.templates.Templates() {
+		if t.Name() == name {
+			return true
+		}
+	}
+	return false
+}
+
 type server struct {
 	nexa            *Nexa
 	mux             *http.ServeMux
 	subscriberMutex sync.Mutex
 	subscribers     map[subscriber]bool
+	*templateHandler
 }
 
 func hasString(slice []string, value string) bool {
@@ -59,20 +82,7 @@ func (s *server) roomsHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("error: %+v", err.Error())))
 		return
 	}
-	t := template.New("layout.tmpl")
-	t = t.Funcs(template.FuncMap{
-		"has": hasString,
-	})
-	t, err = t.ParseFS(
-		templates,
-		"templates/layout.tmpl",
-		"templates/nodes.tmpl",
-		"templates/rooms.tmpl",
-	)
-	if err != nil {
-		log.Println("error parsing template:", err.Error())
-	}
-	if err := t.ExecuteTemplate(w, "layout.tmpl", rooms); err != nil {
+	if err := s.templates.ExecuteTemplate(w, "layout.tmpl", rooms); err != nil {
 		log.Println("error executing template:", err.Error())
 	}
 }
@@ -84,11 +94,7 @@ func (s *server) deviceHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("error: %+v", err.Error())))
 		return
 	}
-	t := template.Must(template.ParseFS(
-		templates,
-		"templates/rooms.tmpl",
-	))
-	t.ExecuteTemplate(w, "device", device)
+	s.templates.ExecuteTemplate(w, "device", device)
 }
 
 func (s *server) addSubscriber(subscriber *subscriber) {
@@ -158,22 +164,13 @@ func (s *server) broadcast(msg *Message) error {
 		useTemplate = msg.Subtype
 	}
 
-	foundTemplate := false
-	t := template.Must(template.ParseFS(templates, "templates/nodes.tmpl"))
-	for _, tmpl := range t.Templates() {
-		if tmpl.Name() == useTemplate {
-			foundTemplate = true
-			break
-		}
-	}
-
-	if !foundTemplate {
+	if !s.HasTemplate(useTemplate) {
 		log.Printf("template %q not found, ignoring message. Full message was: %#v", useTemplate, msg)
 		return nil
 	}
 
 	var htmlMsg bytes.Buffer
-	if err := t.ExecuteTemplate(&htmlMsg, useTemplate, msg); err != nil {
+	if err := s.templates.ExecuteTemplate(&htmlMsg, useTemplate, msg); err != nil {
 		return err
 	}
 
@@ -196,6 +193,7 @@ func NewServer(messages chan *Message) *server {
 		mux:             http.NewServeMux(),
 		subscribers:     make(map[subscriber]bool),
 		subscriberMutex: sync.Mutex{},
+		templateHandler: newTemplateHandler(templateFS),
 	}
 
 	// Pages
