@@ -16,6 +16,8 @@ import (
 	"nhooyr.io/websocket"
 )
 
+type M = map[string]any
+
 //go:embed templates
 var templateFS embed.FS
 
@@ -82,7 +84,7 @@ func (s *server) roomsHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("error: %+v", err.Error())))
 		return
 	}
-	if err := s.templates.ExecuteTemplate(w, "layout.tmpl", map[string]any{"rooms": rooms, "time": time.Now()}); err != nil {
+	if err := s.templates.ExecuteTemplate(w, "layout.tmpl", M{"rooms": rooms, "time": time.Now()}); err != nil {
 		log.Println("error executing template:", err.Error())
 	}
 }
