@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/spf13/viper"
 )
@@ -11,8 +12,11 @@ import (
 func config() error {
 	viper.SetConfigName("goblin")
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath("$XDG_CONFIG")
 	viper.AddConfigPath("$HOME")
+	if _, ok := os.LookupEnv("$XDG_CONFIG"); ok {
+		viper.AddConfigPath("$XDG_CONFIG")
+	}
+	viper.AddConfigPath("$HOME/.config")
 	viper.AddConfigPath("/etc")
 	viper.AddConfigPath(".")
 
@@ -37,7 +41,10 @@ func config() error {
 // TODO: make a database interface
 
 func main() {
-	config()
+	if err := config(); err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Using config file %s", viper.ConfigFileUsed())
 	log.Printf("Connecting to Nexa at %s", viper.GetString("nexa.address"))
 	stringMessages := make(chan string, 10)
 	messages := make(chan *Message, 10)
