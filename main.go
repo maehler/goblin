@@ -21,10 +21,11 @@ func config() error {
 	viper.SetDefault("nexa.socket_port", 8887)
 	viper.SetDefault("nexa.username", "nexa")
 	viper.SetDefault("nexa.password", "nexa")
+	viper.SetDefault("home_name", "Goblin")
 
 	nexaIP, err := IdentifyNexa()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	log.Printf("Detected Nexa at %s", nexaIP)
 	viper.SetDefault("nexa.address", nexaIP)

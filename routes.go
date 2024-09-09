@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/spf13/viper"
 	"nhooyr.io/websocket"
 )
 
@@ -36,7 +37,8 @@ type templateHandler struct {
 func newTemplateHandler(fs fs.FS) *templateHandler {
 	t := template.New("")
 	t.Funcs(template.FuncMap{
-		"has": hasString,
+		"has":      hasString,
+		"homeName": homeName,
 	})
 	t = template.Must(t.ParseFS(fs, "templates/*.tmpl"))
 	return &templateHandler{t}
@@ -66,6 +68,10 @@ func hasString(slice []string, value string) bool {
 		}
 	}
 	return false
+}
+
+func homeName() string {
+	return viper.GetString("home_name")
 }
 
 func (s *server) nodesHandler(w http.ResponseWriter, r *http.Request) {

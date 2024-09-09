@@ -1,6 +1,8 @@
 host: 0.0.0.0
 port: 3000
 
+home_name: "My home"
+
 nexa:
   ## IP address of the Nexa Bridge. By default this will
   ## be detected automatically. Uncomment below to set manually.
