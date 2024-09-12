@@ -25,7 +25,10 @@ func config() error {
 	viper.SetDefault("nexa.socket_port", 8887)
 	viper.SetDefault("nexa.username", "nexa")
 	viper.SetDefault("nexa.password", "nexa")
-	viper.SetDefault("home_name", "Goblin")
+	viper.SetDefault("home_name", "goblin")
+
+	viper.SetEnvPrefix("cleve")
+	viper.MustBindEnv("home_name")
 
 	nexaIP, err := IdentifyNexa()
 	if err != nil {
@@ -54,7 +57,7 @@ func main() {
 		stringMessages,
 	)
 	go MessageConsumer(stringMessages, messages)
-	server := NewServer(messages)
+	server := NewServer(messages, WithName(viper.GetString("home_name")))
 	log.Printf("server running on %v:%v", viper.GetString("host"), viper.GetInt("port"))
 	http.ListenAndServe(
 		fmt.Sprintf(

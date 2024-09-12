@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/spf13/viper"
 	"nhooyr.io/websocket"
 )
 
@@ -34,11 +33,11 @@ type templateHandler struct {
 	templates *template.Template
 }
 
-func newTemplateHandler(fs fs.FS) *templateHandler {
+func newTemplateHandler(fs fs.FS, name string) *templateHandler {
 	t := template.New("")
 	t.Funcs(template.FuncMap{
 		"has":      hasString,
-		"homeName": homeName,
+		"homeName": func() string { return name },
 	})
 	t = template.Must(t.ParseFS(fs, "templates/*.tmpl"))
 	return &templateHandler{t}
@@ -68,10 +67,6 @@ func hasString(slice []string, value string) bool {
 		}
 	}
 	return false
-}
-
-func homeName() string {
-	return viper.GetString("home_name")
 }
 
 func (s *server) nodesHandler(w http.ResponseWriter, r *http.Request) {
@@ -195,9 +190,42 @@ func (s *server) broadcast(msg *Message) error {
 	return nil
 }
 
-func NewServer(messages chan *Message) *server {
+type options struct {
+	name *string
+}
+
+type Option func(*options) error
+
+func WithName(name string) Option {
+	return func(options *options) error {
+		if len(name) > 128 {
+			return fmt.Errorf("home name cannot be longer than 128 characters")
+		}
+		if len(name) == 0 {
+			return fmt.Errorf("home name cannot be empty")
+		}
+		options.name = &name
+		return nil
+	}
+}
+
+func NewServer(messages chan *Message, opts ...Option) *server {
 	nexa := &Nexa{
 		Config: NewNexaConfig(),
+	}
+
+	options := options{}
+	for _, o := range opts {
+		if err := o(&options); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	var name string
+	if options.name != nil {
+		name = *options.name
+	} else {
+		name = "goblin"
 	}
 
 	s := &server{
@@ -205,7 +233,7 @@ func NewServer(messages chan *Message) *server {
 		mux:             http.NewServeMux(),
 		subscribers:     make(map[subscriber]bool),
 		subscriberMutex: sync.Mutex{},
-		templateHandler: newTemplateHandler(templateFS),
+		templateHandler: newTemplateHandler(templateFS, name),
 	}
 
 	// Pages
