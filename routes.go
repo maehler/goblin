@@ -53,6 +53,8 @@ func (t templateHandler) HasTemplate(name string) bool {
 }
 
 type server struct {
+	host            string
+	port            int
 	nexa            *Nexa
 	mux             *http.ServeMux
 	subscriberMutex sync.Mutex
@@ -192,6 +194,8 @@ func (s *server) broadcast(msg *Message) error {
 
 type options struct {
 	name *string
+	host *string
+	port *int
 }
 
 type Option func(*options) error
@@ -205,6 +209,23 @@ func WithName(name string) Option {
 			return fmt.Errorf("home name cannot be empty")
 		}
 		options.name = &name
+		return nil
+	}
+}
+
+func WithHost(host string) Option {
+	return func(options *options) error {
+		options.host = &host
+		return nil
+	}
+}
+
+func WithPort(port int) Option {
+	return func(options *options) error {
+		if port < 80 || port > 65535 {
+			return fmt.Errorf("port must be between 80 and 65535")
+		}
+		options.port = &port
 		return nil
 	}
 }
@@ -228,7 +249,25 @@ func NewServer(messages chan *Message, opts ...Option) *server {
 		name = "goblin"
 	}
 
+	log.Printf("Setting home name to %q", name)
+
+	var host string
+	if options.host != nil {
+		host = *options.host
+	} else {
+		name = "localhost"
+	}
+
+	var port int
+	if options.port != nil {
+		port = *options.port
+	} else {
+		port = 3000
+	}
+
 	s := &server{
+		host:            host,
+		port:            port,
 		nexa:            nexa,
 		mux:             http.NewServeMux(),
 		subscribers:     make(map[subscriber]bool),
@@ -263,4 +302,16 @@ func NewServer(messages chan *Message, opts ...Option) *server {
 	}(messages)
 
 	return s
+}
+
+func (s *server) Serve() error {
+	log.Printf("Starting server on %s:%d", s.host, s.port)
+	return http.ListenAndServe(
+		fmt.Sprintf(
+			"%s:%d",
+			s.host,
+			s.port,
+		),
+		s.mux,
+	)
 }

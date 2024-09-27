@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/spf13/viper"
@@ -29,6 +27,8 @@ func config() error {
 
 	viper.SetEnvPrefix("cleve")
 	viper.MustBindEnv("home_name")
+	viper.MustBindEnv("host")
+	viper.MustBindEnv("port")
 
 	nexaIP, err := IdentifyNexa()
 	if err != nil {
@@ -57,13 +57,11 @@ func main() {
 		stringMessages,
 	)
 	go MessageConsumer(stringMessages, messages)
-	server := NewServer(messages, WithName(viper.GetString("home_name")))
-	log.Printf("server running on %v:%v", viper.GetString("host"), viper.GetInt("port"))
-	http.ListenAndServe(
-		fmt.Sprintf(
-			"%v:%v",
-			viper.GetString("host"),
-			viper.GetInt("port")),
-		server.mux,
+	server := NewServer(
+		messages,
+		WithName(viper.GetString("home_name")),
+		WithHost(viper.GetString("host")),
+		WithPort(viper.GetInt("port")),
 	)
+	server.Serve()
 }
