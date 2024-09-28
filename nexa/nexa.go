@@ -1,4 +1,4 @@
-package main
+package nexa
 
 import (
 	"context"
@@ -17,7 +17,22 @@ import (
 	"nhooyr.io/websocket"
 )
 
-type Sensor interface {
+type subscriber struct {
+	messages chan string
+	ip       string
+}
+
+type NexaService struct {
+	Nexa *Nexa
+}
+
+func NewNexaService(nexa *Nexa) NexaService {
+	return NexaService{
+		Nexa: nexa,
+	}
+}
+
+type NexaSensor interface {
 	Id() (string, error)
 	BoolValue() (bool, error)
 	FloatValue() (float64, error)
@@ -26,13 +41,26 @@ type Sensor interface {
 }
 
 type Nexa struct {
+	// Nexa config
 	Config *NexaConfig
+
+	// Parsed output messages
+	Messages chan Message
+}
+
+func NewNexa(config *NexaConfig) *Nexa {
+	return &Nexa{
+		Config:   config,
+		Messages: make(chan Message, 0),
+	}
 }
 
 type NexaConfig struct {
-	URL      url.URL
-	Username string
-	Password string
+	URL           url.URL
+	Username      string
+	Password      string
+	WebsocketHost string
+	WebsocketPort int
 }
 
 type NexaNodes = []*NexaNode
@@ -106,12 +134,12 @@ func NewNexaConfig() *NexaConfig {
 	}
 }
 
-func (n *Nexa) Nodes() (*NexaNodes, error) {
+func (s *NexaService) Nodes() (*NexaNodes, error) {
 	client := &http.Client{}
-	nodesURL := n.Config.URL
+	nodesURL := s.Nexa.Config.URL
 	nodesURL.Path = "v1/nodes"
 
-	da := auth.NewDigestAuth(n.Config.Username, n.Config.Password)
+	da := auth.NewDigestAuth(s.Nexa.Config.Username, s.Nexa.Config.Password)
 	req, err := da.Request("GET", nodesURL.String())
 	if err != nil {
 		return nil, err
@@ -146,12 +174,12 @@ func (n *Nexa) Nodes() (*NexaNodes, error) {
 	return nodes, nil
 }
 
-func (n *Nexa) Node(nodeId string) (*NexaNode, error) {
+func (s *NexaService) Node(nodeId string) (*NexaNode, error) {
 	client := &http.Client{}
-	nodesURL := n.Config.URL
+	nodesURL := s.Nexa.Config.URL
 	nodesURL.Path = fmt.Sprintf("v1/nodes/%s", nodeId)
 
-	da := auth.NewDigestAuth(n.Config.Username, n.Config.Password)
+	da := auth.NewDigestAuth(s.Nexa.Config.Username, s.Nexa.Config.Password)
 	req, err := da.Request("GET", nodesURL.String())
 	if err != nil {
 		return nil, err
@@ -184,12 +212,12 @@ func (n *Nexa) Node(nodeId string) (*NexaNode, error) {
 	return node, nil
 }
 
-func (n *Nexa) Rooms() (*NexaRooms, error) {
+func (s *NexaService) Rooms() (*NexaRooms, error) {
 	client := &http.Client{}
-	roomsURL := n.Config.URL
+	roomsURL := s.Nexa.Config.URL
 	roomsURL.Path = "v1/rooms"
 
-	da := auth.NewDigestAuth(n.Config.Username, n.Config.Password)
+	da := auth.NewDigestAuth(s.Nexa.Config.Username, s.Nexa.Config.Password)
 	req, err := da.Request("GET", roomsURL.String())
 	if err != nil {
 		return nil, err
@@ -222,7 +250,7 @@ func (n *Nexa) Rooms() (*NexaRooms, error) {
 		roomIds[room.Id] = i
 	}
 
-	nodes, err := n.Nodes()
+	nodes, err := s.Nodes()
 	if err != nil {
 		return nil, err
 	}
@@ -238,11 +266,11 @@ func (n *Nexa) Rooms() (*NexaRooms, error) {
 	return rooms, nil
 }
 
-func InitSockets(host string, port int, messages chan string) {
+func (n *Nexa) InitSockets() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	c, _, err := websocket.Dial(ctx, fmt.Sprintf("ws://%s:%d", host, port), nil)
+	c, _, err := websocket.Dial(ctx, fmt.Sprintf("ws://%s:%d", n.Config.WebsocketHost, n.Config.WebsocketPort), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -252,16 +280,20 @@ func InitSockets(host string, port int, messages chan string) {
 		_, r, err := c.Reader(context.TODO())
 		if err != nil {
 			log.Println("error reading from socket:", err.Error())
-			close(messages)
 			return
 		}
 		b, err := io.ReadAll(r)
 		if err != nil {
 			log.Println("error reading message:", err.Error())
-			close(messages)
 			return
 		}
-		messages <- string(b)
+		msg, err := ParseMessage(string(b))
+		if err != nil {
+			log.Println("error parsing message:", err.Error())
+			return
+		}
+
+		n.Messages <- *msg
 	}
 }
 

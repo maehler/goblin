@@ -1,4 +1,4 @@
-package main
+package http
 
 import (
 	"bytes"
@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/maehler/goblin"
+	"github.com/maehler/goblin/nexa"
 	"nhooyr.io/websocket"
 )
 
@@ -55,11 +57,14 @@ func (t templateHandler) HasTemplate(name string) bool {
 type server struct {
 	host            string
 	port            int
-	nexa            *Nexa
 	mux             *http.ServeMux
 	subscriberMutex sync.Mutex
 	subscribers     map[subscriber]bool
 	*templateHandler
+
+	RoomService   goblin.RoomService
+	SensorService goblin.SensorService
+	NexaService   nexa.NexaService
 }
 
 func hasString(slice []string, value string) bool {
@@ -72,7 +77,7 @@ func hasString(slice []string, value string) bool {
 }
 
 func (s *server) nodesHandler(w http.ResponseWriter, r *http.Request) {
-	nodes, err := s.nexa.Nodes()
+	nodes, err := s.NexaService.Nodes()
 	if err != nil {
 		w.Write([]byte(fmt.Sprintf("error: %+v", err.Error())))
 		return
@@ -81,7 +86,7 @@ func (s *server) nodesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) roomsHandler(w http.ResponseWriter, r *http.Request) {
-	rooms, err := s.nexa.Rooms()
+	rooms, err := s.NexaService.Rooms()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("error: %+v", err.Error())))
@@ -94,7 +99,7 @@ func (s *server) roomsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) deviceHandler(w http.ResponseWriter, r *http.Request) {
-	device, err := s.nexa.Node(r.PathValue("id"))
+	device, err := s.NexaService.Node(r.PathValue("id"))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("error: %+v", err.Error())))
@@ -165,7 +170,7 @@ func (s *server) subscribeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *server) broadcast(msg *Message) error {
+func (s *server) broadcast(msg *nexa.Message) error {
 	var useTemplate string
 	if msg.Capability != "" {
 		useTemplate = msg.Capability
@@ -193,9 +198,10 @@ func (s *server) broadcast(msg *Message) error {
 }
 
 type options struct {
-	name *string
-	host *string
-	port *int
+	name     *string
+	database *string
+	host     *string
+	port     *int
 }
 
 type Option func(*options) error
@@ -230,11 +236,7 @@ func WithPort(port int) Option {
 	}
 }
 
-func NewServer(messages chan *Message, opts ...Option) *server {
-	nexa := &Nexa{
-		Config: NewNexaConfig(),
-	}
-
+func NewServer(opts ...Option) *server {
 	options := options{}
 	for _, o := range opts {
 		if err := o(&options); err != nil {
@@ -268,7 +270,6 @@ func NewServer(messages chan *Message, opts ...Option) *server {
 	s := &server{
 		host:            host,
 		port:            port,
-		nexa:            nexa,
 		mux:             http.NewServeMux(),
 		subscribers:     make(map[subscriber]bool),
 		subscriberMutex: sync.Mutex{},
@@ -292,20 +293,23 @@ func NewServer(messages chan *Message, opts ...Option) *server {
 	fs := http.FileServer(http.FS(staticFS))
 	s.mux.Handle("GET /", fs)
 
-	go func(messages chan *Message) {
-		for msg := range messages {
-			log.Printf("broadcasting to %d subscribers: %s", len(s.subscribers), msg)
-			if err := s.broadcast(msg); err != nil {
-				log.Println("broadcast error:", err.Error())
-			}
-		}
-	}(messages)
-
 	return s
 }
 
 func (s *server) Serve() error {
 	log.Printf("Starting server on %s:%d", s.host, s.port)
+
+	if s.NexaService.Nexa != nil {
+		go func(messages chan nexa.Message) {
+			for msg := range messages {
+				log.Printf("broadcasting to %d subscribers: %s", len(s.subscribers), msg)
+				if err := s.broadcast(&msg); err != nil {
+					log.Println("broadcast error:", err.Error())
+				}
+			}
+		}(s.NexaService.Nexa.Messages)
+	}
+
 	return http.ListenAndServe(
 		fmt.Sprintf(
 			"%s:%d",
