@@ -44,7 +44,6 @@ func config() error {
 }
 
 // TODO: save temperature and humidity to the database
-// TODO: make a database interface
 
 func main() {
 	if err := config(); err != nil {
@@ -65,18 +64,6 @@ func main() {
 	nexaConfig.WebsocketPort = viper.GetInt("nexa.socket_port")
 	nxa := nexa.NewNexa(nexaConfig)
 	go nxa.InitSockets()
-
-	// websocket messages from the nexa
-	// stringMessages := make(chan string, 10)
-	// output messages from the parsing
-	// messages := make(chan *nexa.Message, 10)
-
-	// go nexa.InitSockets(
-	// 	viper.GetString("nexa.address"),
-	// 	viper.GetInt("nexa.socket_port"),
-	// 	stringMessages,
-	// )
-	// go nexa.MessageConsumer(stringMessages, messages)
 
 	server := http.NewServer(
 		http.WithName(viper.GetString("home_name")),

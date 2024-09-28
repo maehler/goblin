@@ -405,15 +405,3 @@ func ParseMessage(message string) (*Message, error) {
 	}
 	return m, nil
 }
-
-func MessageConsumer(inputMessages chan string, outputMessages chan *Message) {
-	for msg := range inputMessages {
-		m, err := ParseMessage(msg)
-		if err != nil {
-			log.Printf("error parsing message: %s: %s", err.Error(), msg)
-			continue
-		}
-		outputMessages <- m
-	}
-	close(outputMessages)
-}
