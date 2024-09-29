@@ -25,7 +25,7 @@ func NewDatabase(dsn string) *DB {
 	}
 }
 
-func (db DB) Open() error {
+func (db *DB) Open() error {
 	log.Printf("Connecting to database %s", db.dsn)
 	var err error
 	if db.db, err = sql.Open("sqlite3", db.dsn); err != nil {
