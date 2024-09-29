@@ -28,7 +28,7 @@ func config() error {
 	viper.SetDefault("nexa.password", "nexa")
 	viper.SetDefault("home_name", "goblin")
 
-	viper.SetEnvPrefix("cleve")
+	viper.SetEnvPrefix("goblin")
 	viper.MustBindEnv("home_name")
 	viper.MustBindEnv("host")
 	viper.MustBindEnv("port")
