@@ -113,7 +113,7 @@ func (n NexaEvent) StringValue() string {
 	return fmt.Sprintf("%v", n.Value)
 }
 
-type NexaRooms []NexaRoom
+type NexaRooms = []NexaRoom
 
 type NexaRoom struct {
 	Id              string `json:"id"`
@@ -134,7 +134,7 @@ func NewNexaConfig() *NexaConfig {
 	}
 }
 
-func (s *NexaService) Nodes() (*NexaNodes, error) {
+func (s *NexaService) Nodes() (NexaNodes, error) {
 	client := &http.Client{}
 	nodesURL := s.Nexa.Config.URL
 	nodesURL.Path = "v1/nodes"
@@ -162,11 +162,11 @@ func (s *NexaService) Nodes() (*NexaNodes, error) {
 		return nil, err
 	}
 
-	nodes := &NexaNodes{}
-	if err := json.Unmarshal(body, nodes); err != nil {
+	nodes := NexaNodes{}
+	if err := json.Unmarshal(body, &nodes); err != nil {
 		return nil, err
 	}
-	for _, node := range *nodes {
+	for _, node := range nodes {
 		for _, event := range node.LastEvents {
 			event.NodeId = node.Id
 		}
@@ -212,7 +212,7 @@ func (s *NexaService) Node(nodeId string) (*NexaNode, error) {
 	return node, nil
 }
 
-func (s *NexaService) Rooms() (*NexaRooms, error) {
+func (s *NexaService) Rooms() (NexaRooms, error) {
 	client := &http.Client{}
 	roomsURL := s.Nexa.Config.URL
 	roomsURL.Path = "v1/rooms"
@@ -240,13 +240,13 @@ func (s *NexaService) Rooms() (*NexaRooms, error) {
 		return nil, err
 	}
 
-	rooms := &NexaRooms{}
-	if err := json.Unmarshal(body, rooms); err != nil {
+	rooms := NexaRooms{}
+	if err := json.Unmarshal(body, &rooms); err != nil {
 		return nil, err
 	}
 
 	roomIds := make(map[string]int)
-	for i, room := range *rooms {
+	for i, room := range rooms {
 		roomIds[room.Id] = i
 	}
 
@@ -255,12 +255,12 @@ func (s *NexaService) Rooms() (*NexaRooms, error) {
 		return nil, err
 	}
 
-	for _, node := range *nodes {
+	for _, node := range nodes {
 		if node.RoomId == "" {
 			continue
 		}
 		roomIndex := roomIds[node.RoomId]
-		(*rooms)[roomIndex].Nodes = append((*rooms)[roomIndex].Nodes, node)
+		rooms[roomIndex].Nodes = append(rooms[roomIndex].Nodes, node)
 	}
 
 	return rooms, nil
