@@ -27,11 +27,13 @@ func config() error {
 	viper.SetDefault("nexa.username", "nexa")
 	viper.SetDefault("nexa.password", "nexa")
 	viper.SetDefault("home_name", "goblin")
+	viper.SetDefault("sqlite_dsn", "file:goblin.db")
 
 	viper.SetEnvPrefix("goblin")
 	viper.MustBindEnv("home_name")
 	viper.MustBindEnv("host")
 	viper.MustBindEnv("port")
+	viper.MustBindEnv("sqlite_dsn")
 
 	nexaIP, err := nexa.IdentifyNexa()
 	if err != nil {

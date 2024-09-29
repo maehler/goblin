@@ -1,6 +1,7 @@
 package sqlite
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"fmt"
@@ -12,17 +13,22 @@ import (
 )
 
 type DB struct {
-	dsn string
-	db  *sql.DB
+	dsn     string
+	db      *sql.DB
+	context context.Context
+	cancel  context.CancelFunc
 }
 
 //go:embed migrations/*.sql
 var migrationFS embed.FS
 
 func NewDatabase(dsn string) *DB {
-	return &DB{
+	db := &DB{
 		dsn: dsn,
 	}
+
+	db.context, db.cancel = context.WithCancel(context.Background())
+	return db
 }
 
 func (db *DB) Open() error {
