@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/maehler/goblin"
@@ -28,7 +29,17 @@ func (s *RoomService) RoomById(ctx context.Context, id string) (*goblin.Room, er
 }
 
 func (s *RoomService) CreateRoom(ctx context.Context, room *goblin.Room) error {
-	panic("not implemented")
+	tx, err := s.db.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := createRoom(ctx, tx, room); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (s *RoomService) DeleteRoom(ctx context.Context, id string) error {
@@ -59,7 +70,7 @@ func rooms(ctx context.Context, tx *sql.Tx, filter goblin.RoomFilter) ([]*goblin
 		args = append(args, *v)
 	}
 
-	rows, err := tx.QueryContext(ctx, "SELECT id, name FROM room WHERE "+strings.Join(where, " AND "), args...)
+	rows, err := tx.QueryContext(ctx, "SELECT id, name FROM rooms WHERE "+strings.Join(where, " AND "), args...)
 	if err != nil {
 		return nil, err
 	}
@@ -83,4 +94,11 @@ func rooms(ctx context.Context, tx *sql.Tx, filter goblin.RoomFilter) ([]*goblin
 	}
 
 	return rooms, nil
+}
+
+func createRoom(ctx context.Context, tx *sql.Tx, room *goblin.Room) error {
+	log.Printf("inserting room %s with id %s", room.Name, room.Id)
+	stmt := `INSERT OR REPLACE INTO rooms (id, name) VALUES (?, ?)`
+	_, err := tx.ExecContext(ctx, stmt, room.Id, room.Name, room.Id)
+	return err
 }

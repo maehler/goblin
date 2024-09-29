@@ -3,8 +3,16 @@ package goblin
 import "context"
 
 type Room struct {
-	Id   string
-	Name string
+	Id      string
+	Name    string
+	Sensors []*Sensor
+}
+
+func NewRoom(id, name string) Room {
+	return Room{
+		Id:   id,
+		Name: name,
+	}
 }
 
 type RoomService interface {

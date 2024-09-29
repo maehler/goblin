@@ -310,6 +310,18 @@ func (s *server) Serve() error {
 		}(s.NexaService.Nexa.Messages)
 	}
 
+	// Setting up rooms and sensors in the database
+	rooms, err := s.NexaService.Rooms()
+	if err != nil {
+		return err
+	}
+	for _, room := range rooms {
+		r := goblin.NewRoom(room.Id, room.Name)
+		if err := s.RoomService.CreateRoom(context.Background(), &r); err != nil {
+			log.Println(err)
+		}
+	}
+
 	return http.ListenAndServe(
 		fmt.Sprintf(
 			"%s:%d",
