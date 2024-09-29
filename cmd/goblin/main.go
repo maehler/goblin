@@ -77,5 +77,7 @@ func main() {
 	server.SensorService = sqlite.NewSensorService(db)
 	server.NexaService = nexa.NewNexaService(nxa)
 
-	server.Serve()
+	if err := server.Serve(); err != nil {
+		log.Fatal(err)
+	}
 }
