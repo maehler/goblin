@@ -22,8 +22,8 @@ func config() error {
 	} else {
 		slog.Error("failed to get home directory", "error", err)
 	}
-	if _, ok := os.LookupEnv("XDG_CONFIG"); ok {
-		viper.AddConfigPath("XDG_CONFIG")
+	if _, ok := os.LookupEnv("XDG_CONFIG_HOME"); ok {
+		viper.AddConfigPath("XDG_CONFIG_HOME")
 	}
 	viper.AddConfigPath(filepath.Join(homedir, ".config"))
 	viper.AddConfigPath("/etc")
