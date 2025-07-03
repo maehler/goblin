@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/maehler/goblin/http"
 	"github.com/maehler/goblin/nexa"
@@ -34,6 +36,22 @@ func config() error {
 	viper.MustBindEnv("host")
 	viper.MustBindEnv("port")
 	viper.MustBindEnv("sqlite_dsn")
+	viper.MustBindEnv("loglevel")
+
+	viper.SetDefault("loglevel", "warning")
+	loglevel := viper.GetString("loglevel")
+	switch strings.ToLower(loglevel) {
+	case "debug":
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+	case "info":
+		slog.SetLogLoggerLevel(slog.LevelInfo)
+	case "warn", "warning":
+		slog.SetLogLoggerLevel(slog.LevelWarn)
+	case "error":
+		slog.SetLogLoggerLevel(slog.LevelError)
+	default:
+		return fmt.Errorf("invalid log level: %s", loglevel)
+	}
 
 	nexaIP, err := nexa.IdentifyNexa()
 	if err != nil {
