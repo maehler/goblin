@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -68,28 +69,16 @@ type server struct {
 }
 
 func hasString(slice []string, value string) bool {
-	for _, v := range slice {
-		if v == value {
-			return true
-		}
-	}
-	return false
-}
-
-func (s *server) nodesHandler(w http.ResponseWriter, r *http.Request) {
-	nodes, err := s.NexaService.Nodes()
-	if err != nil {
-		w.Write([]byte(fmt.Sprintf("error: %+v", err.Error())))
-		return
-	}
-	w.Write([]byte(fmt.Sprintf("%+v", nodes)))
+	return slices.Contains(slice, value)
 }
 
 func (s *server) roomsHandler(w http.ResponseWriter, r *http.Request) {
 	rooms, err := s.NexaService.Rooms()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("error: %+v", err.Error())))
+		if _, err := fmt.Fprintf(w, "error: %+v", err); err != nil {
+			slog.Error("failed to write error in response", "error", err)
+		}
 		return
 	}
 	if err := s.templates.ExecuteTemplate(w, "layout.tmpl", M{"rooms": rooms, "time": time.Now()}); err != nil {
@@ -102,7 +91,9 @@ func (s *server) deviceHandler(w http.ResponseWriter, r *http.Request) {
 	device, err := s.NexaService.Node(r.PathValue("id"))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("error: %+v", err.Error())))
+		if _, err := fmt.Fprintf(w, "error: %+v", err); err != nil {
+			slog.Error("failed to write error in response", "error", err)
+		}
 		return
 	}
 	if err := s.templates.ExecuteTemplate(w, "device", device); err != nil {
@@ -138,7 +129,11 @@ func (s *server) subscribe(ctx context.Context, w http.ResponseWriter, r *http.R
 	if err != nil {
 		return err
 	}
-	defer c.CloseNow()
+	defer func() {
+		if err := c.CloseNow(); err != nil {
+			slog.Error("failed to close websocket", "error", err)
+		}
+	}()
 
 	ctx = c.CloseRead(ctx)
 	for {
@@ -165,7 +160,7 @@ func (s *server) subscribeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		slog.Error("error: %v", err)
+		slog.Error("websocket subscribe failed", "error", err)
 		return
 	}
 }
@@ -198,10 +193,9 @@ func (s *server) broadcast(msg *nexa.Message) error {
 }
 
 type options struct {
-	name     *string
-	database *string
-	host     *string
-	port     *int
+	name *string
+	host *string
+	port *int
 }
 
 type Option func(*options) error

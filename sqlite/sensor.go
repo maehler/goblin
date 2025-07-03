@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/maehler/goblin"
@@ -17,12 +18,16 @@ func NewSensorService(db *DB) *SensorService {
 	return &SensorService{db}
 }
 
-func (s *SensorService) SensorById(ctx context.Context, id string) (*goblin.Sensor, error) {
+func (s *SensorService) SensorById(ctx context.Context, id string) (sensor *goblin.Sensor, err error) {
 	tx, err := s.db.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err != nil {
+			err = tx.Rollback()
+		}
+	}()
 
 	return sensorById(ctx, tx, id)
 }
@@ -65,7 +70,7 @@ func sensorById(ctx context.Context, tx *sql.Tx, id string) (*goblin.Sensor, err
 }
 
 func sensors(ctx context.Context, tx *sql.Tx, filter goblin.SensorFilter) ([]*goblin.Sensor, error) {
-	where, args := []string{}, []interface{}{}
+	where, args := []string{}, []any{}
 	if v := filter.Id; v != nil {
 		where = append(where, "id = ?")
 		args = append(args, *v)
@@ -86,7 +91,11 @@ func sensors(ctx context.Context, tx *sql.Tx, filter goblin.SensorFilter) ([]*go
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			slog.Error("failed to close rows", "error", err)
+		}
+	}()
 
 	sensors := make([]*goblin.Sensor, 0)
 	for rows.Next() {

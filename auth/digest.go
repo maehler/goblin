@@ -71,7 +71,9 @@ func (a *DigestAuth) parse(header http.Header) {
 
 func (a *DigestAuth) HashSum(data string) []byte {
 	a.hash.Reset()
-	io.WriteString(a.hash, data)
+	if _, err := io.WriteString(a.hash, data); err != nil {
+		slog.Error("failed to write to hash", "error", err)
+	}
 	return a.hash.Sum(nil)
 }
 
@@ -124,7 +126,11 @@ func (a *DigestAuth) Request(method string, url string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			slog.Error("failed to close response body", "error", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusUnauthorized {
 		// Not unauthorized, send back the first request

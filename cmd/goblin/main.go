@@ -39,7 +39,7 @@ func config() error {
 	if err != nil {
 		return err
 	}
-	log.Printf("detected Nexa at %s", nexaIP)
+	slog.Info("detected nexa", "address", nexaIP)
 	viper.SetDefault("nexa.address", nexaIP)
 
 	return viper.ReadInConfig()
@@ -56,7 +56,7 @@ func main() {
 	db := sqlite.NewDatabase(viper.GetString("sqlite_dsn"))
 	if err := db.Open(); err != nil {
 		slog.Error("failed to open database", "error", err)
-       os.Exit(1)
+		os.Exit(1)
 	}
 
 	slog.Info("connecting to nexa", "address", viper.GetString("nexa.address"))

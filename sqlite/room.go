@@ -18,22 +18,31 @@ func NewRoomService(db *DB) *RoomService {
 	return &RoomService{db}
 }
 
-func (s *RoomService) RoomById(ctx context.Context, id string) (*goblin.Room, error) {
+func (s *RoomService) RoomById(ctx context.Context, id string) (room *goblin.Room, err error) {
 	tx, err := s.db.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err != nil {
+			err = tx.Rollback()
+		}
+	}()
 
 	return roomById(ctx, tx, id)
 }
 
-func (s *RoomService) CreateRoom(ctx context.Context, room *goblin.Room) error {
+func (s *RoomService) CreateRoom(ctx context.Context, room *goblin.Room) (err error) {
 	tx, err := s.db.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err != nil {
+			slog.Debug("rolling back room creation")
+			err = tx.Rollback()
+		}
+	}()
 
 	if err := createRoom(ctx, tx, room); err != nil {
 		return err
@@ -60,7 +69,7 @@ func roomById(ctx context.Context, tx *sql.Tx, id string) (*goblin.Room, error) 
 }
 
 func rooms(ctx context.Context, tx *sql.Tx, filter goblin.RoomFilter) ([]*goblin.Room, error) {
-	where, args := []string{}, []interface{}{}
+	where, args := []string{}, []any{}
 	if v := filter.Id; v != nil {
 		where = append(where, "id = ?")
 		args = append(args, *v)
@@ -74,7 +83,11 @@ func rooms(ctx context.Context, tx *sql.Tx, filter goblin.RoomFilter) ([]*goblin
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			slog.Error("failed to close rows", "error", err)
+		}
+	}()
 
 	rooms := make([]*goblin.Room, 0)
 	for rows.Next() {

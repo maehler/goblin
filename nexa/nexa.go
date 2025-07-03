@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"time"
 
@@ -17,11 +18,6 @@ import (
 	"github.com/spf13/viper"
 	"nhooyr.io/websocket"
 )
-
-type subscriber struct {
-	messages chan string
-	ip       string
-}
 
 type NexaService struct {
 	Nexa *Nexa
@@ -52,7 +48,7 @@ type Nexa struct {
 func NewNexa(config *NexaConfig) *Nexa {
 	return &Nexa{
 		Config:   config,
-		Messages: make(chan Message, 0),
+		Messages: make(chan Message),
 	}
 }
 
@@ -76,10 +72,10 @@ type NexaNode struct {
 
 type NexaEvent struct {
 	NodeId    string
-	Name      string      `json:"name"`
-	Value     interface{} `json:"value"`
-	PrevValue interface{} `json:"prevValue"`
-	Time      time.Time   `json:"time"`
+	Name      string    `json:"name"`
+	Value     any       `json:"value"`
+	PrevValue any       `json:"prevValue"`
+	Time      time.Time `json:"time"`
 }
 
 func (n NexaEvent) Id() string {
@@ -287,7 +283,11 @@ func (n *Nexa) InitSockets() {
 	if err != nil {
 		panic(err)
 	}
-	defer c.CloseNow()
+	defer func() {
+		if err := c.CloseNow(); err != nil {
+			slog.Error("failed to close websocket connection", "error", err)
+		}
+	}()
 
 	for {
 		_, r, err := c.Reader(context.TODO())
@@ -314,9 +314,14 @@ func (n *Nexa) InitSockets() {
 func GetOutboundIP() net.IP {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("failed to connect to google dns", "error", err)
+		os.Exit(1)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			slog.Error("failed to close upd connection", "error", err)
+		}
+	}()
 
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 
@@ -338,7 +343,11 @@ func IdentifyNexa() (nexaIp string, err error) {
 	if err != nil {
 		return
 	}
-	defer pc.Close()
+	defer func() {
+		if err := pc.Close(); err != nil {
+			slog.Error("failed to close connection", "error", err)
+		}
+	}()
 
 	_, err = pc.WriteToUDP([]byte("hello"), serverAddr)
 	if err != nil {
@@ -355,15 +364,15 @@ func IdentifyNexa() (nexaIp string, err error) {
 }
 
 type Message struct {
-	SystemType string      `json:"systemType"`
-	Subtype    string      `json:"subtype"`
-	SourceNode string      `json:"sourceNode"`
-	Capability string      `json:"capability"`
-	Name       string      `json:"name"`
-	Value      interface{} `json:"value"`
-	Time       time.Time   `json:"time"`
-	Event      string      `json:"event"`
-	NodeId     string      `json:"nodeId"`
+	SystemType string    `json:"systemType"`
+	Subtype    string    `json:"subtype"`
+	SourceNode string    `json:"sourceNode"`
+	Capability string    `json:"capability"`
+	Name       string    `json:"name"`
+	Value      any       `json:"value"`
+	Time       time.Time `json:"time"`
+	Event      string    `json:"event"`
+	NodeId     string    `json:"nodeId"`
 }
 
 func (m Message) Id() string {
