@@ -111,7 +111,25 @@ func rooms(ctx context.Context, tx *sql.Tx, filter goblin.RoomFilter) ([]*goblin
 
 func createRoom(ctx context.Context, tx *sql.Tx, room *goblin.Room) error {
 	slog.Debug("upserting room", "name", room.Name, "id", room.Id)
-	stmt := `INSERT OR REPLACE INTO rooms (id, name) VALUES (?, ?)`
-	_, err := tx.ExecContext(ctx, stmt, room.Id, room.Name, room.Id)
-	return err
+	stmt := `INSERT INTO rooms(id, name) VALUES(?, ?) ON CONFLICT (id) WHERE name != ? DO UPDATE SET name = ? WHERE name != ?`
+	res, err := tx.ExecContext(ctx, stmt, room.Id, room.Name, room.Id, room.Name, room.Name, room.Name)
+	if err != nil {
+		return fmt.Errorf("failed to upsert room: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+	if id != 0 {
+		slog.Info("added room to db", "name", room.Name, "id", room.Id)
+	} else if n == 1 {
+		slog.Info("updated room name", "name", room.Name, "id", room.Id)
+	} else {
+		slog.Debug("nothing to update", "name", room.Name, "id", room.Id)
+	}
+	return nil
 }
