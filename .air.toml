@@ -3,16 +3,16 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  args_bin = []
-  bin = "./bin/goblin"
   cmd = "make goblin"
+  bin = "./bin/goblin"
+  full_bin = "GOBLIN_LOGLEVEL=debug ./bin/goblin"
+  args_bin = []
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata"]
   exclude_file = []
   exclude_regex = ["_test.go"]
   exclude_unchanged = false
   follow_symlink = false
-  full_bin = ""
   include_dir = []
   include_ext = ["go", "tpl", "tmpl", "html", "sql"]
   include_file = []
