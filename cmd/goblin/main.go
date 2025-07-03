@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/maehler/goblin/http"
@@ -15,11 +16,16 @@ import (
 func config() error {
 	viper.SetConfigName("goblin")
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath("$HOME")
-	if _, ok := os.LookupEnv("$XDG_CONFIG"); ok {
-		viper.AddConfigPath("$XDG_CONFIG")
+	homedir, err := os.UserHomeDir()
+	if err == nil {
+		viper.AddConfigPath(homedir)
+	} else {
+		slog.Error("failed to get home directory", "error", err)
 	}
-	viper.AddConfigPath("$HOME/.config")
+	if _, ok := os.LookupEnv("XDG_CONFIG"); ok {
+		viper.AddConfigPath("XDG_CONFIG")
+	}
+	viper.AddConfigPath(filepath.Join(homedir, ".config"))
 	viper.AddConfigPath("/etc")
 	viper.AddConfigPath(".")
 
@@ -29,7 +35,20 @@ func config() error {
 	viper.SetDefault("nexa.username", "nexa")
 	viper.SetDefault("nexa.password", "nexa")
 	viper.SetDefault("home_name", "goblin")
-	viper.SetDefault("sqlite_dsn", "file:goblin.db")
+
+	dataPath, ok := os.LookupEnv("XDG_DATA_HOME")
+	if !ok {
+		dataPath = filepath.Join(homedir, ".local", "share")
+	}
+	dataPath = filepath.Join(dataPath, "goblin")
+	if _, err := os.Stat(dataPath); err == os.ErrNotExist {
+		if err := os.MkdirAll(dataPath, 0o755); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+	viper.SetDefault("sqlite_dsn", "file:"+filepath.Join(dataPath, "goblin.db"))
 
 	viper.SetEnvPrefix("goblin")
 	viper.MustBindEnv("home_name")
