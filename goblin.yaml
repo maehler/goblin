@@ -3,6 +3,12 @@ port: 3000
 
 home_name: "My home"
 
+## SQLite DSN
+## Defaults to $XDG_DATA_HOME/goblin/goblin.db, and if XDG_DATA_HOME is not defined,
+## $HOME/.local/share/goblin/goblin.db is used. Can also be controlled with the environment
+## variable GOBLIN_SQLITE_DSN
+# sqlite_dsn: goblin.db
+
 nexa:
   ## IP address of the Nexa Bridge. By default this will
   ## be detected automatically. Uncomment below to set manually.
