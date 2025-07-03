@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -113,7 +113,7 @@ func (a *DigestAuth) AuthHeader(req *http.Request) string {
 }
 
 func (a *DigestAuth) Request(method string, url string) (*http.Request, error) {
-	log.Printf(`authenticating as user "%s"`, a.username)
+	slog.Info("nexa authentication", "user", a.username)
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, err

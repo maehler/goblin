@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -149,9 +150,13 @@ func (s *NexaService) Nodes() (NexaNodes, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			slog.Error("failed to close response body", "error", err)
+		}
+	}()
 
-	log.Println(resp.Status)
+	slog.Info("nodes response", "status", resp.Status)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf(resp.Status)
@@ -189,9 +194,13 @@ func (s *NexaService) Node(nodeId string) (*NexaNode, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			slog.Error("failed to close response body", "error", err)
+		}
+	}()
 
-	log.Println(resp.Status)
+	slog.Info("node response", "status", resp.Status)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf(resp.Status)
@@ -227,9 +236,13 @@ func (s *NexaService) Rooms() (NexaRooms, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			slog.Error("failed to close response body", "error", err)
+		}
+	}()
 
-	log.Println(resp.Status)
+	slog.Info("rooms response", "status", resp.Status)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf(resp.Status)

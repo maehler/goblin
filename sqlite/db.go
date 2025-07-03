@@ -6,7 +6,7 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
-	"log"
+	"log/slog"
 	"sort"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -32,18 +32,18 @@ func NewDatabase(dsn string) *DB {
 }
 
 func (db *DB) Open() error {
-	log.Printf("Connecting to database %s", db.dsn)
+	slog.Info("connecting to database", "dsn", db.dsn)
 	var err error
 	if db.db, err = sql.Open("sqlite3", db.dsn); err != nil {
 		return err
 	}
 
 	if _, err := db.db.Exec(`PRAGMA journal_mode = wal`); err != nil {
-		return fmt.Errorf("enable wal: %s", err)
+		return fmt.Errorf("failed to enable wal: %w", err)
 	}
 
 	if _, err := db.db.Exec(`PRAGMA foreign_keys = ON`); err != nil {
-		return fmt.Errorf("enable foreign keys: %s", err)
+		return fmt.Errorf("failed to enable foreign keys: %w", err)
 	}
 
 	if err := db.migrate(); err != nil {
@@ -55,7 +55,7 @@ func (db *DB) Open() error {
 
 func (db DB) migrate() error {
 	if _, err := db.db.Exec(`CREATE TABLE IF NOT EXISTS migrations (name TEXT PRIMARY KEY);`); err != nil {
-		return fmt.Errorf("Failed to create migrations table: %s", err.Error())
+		return fmt.Errorf("failed to create migrations table: %w", err)
 	}
 
 	fnames, err := fs.Glob(migrationFS, "migrations/*.sql")
@@ -74,7 +74,7 @@ func (db DB) migrate() error {
 }
 
 func (db DB) migrateFile(fname string) error {
-	log.Printf("Running migration for %s", fname)
+	slog.Info("running migration", "path", fname)
 	tx, err := db.db.Begin()
 	if err != nil {
 		return err

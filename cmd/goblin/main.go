@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 	"os"
 
 	"github.com/maehler/goblin/http"
@@ -49,15 +49,17 @@ func config() error {
 
 func main() {
 	if err := config(); err != nil {
-		log.Fatal(err)
+		slog.Error("failed to initialize config", "error", err)
+		os.Exit(1)
 	}
-	log.Printf("using config file %s", viper.ConfigFileUsed())
+	slog.Info("config file", "path", viper.ConfigFileUsed())
 	db := sqlite.NewDatabase(viper.GetString("sqlite_dsn"))
 	if err := db.Open(); err != nil {
-		log.Fatal(err)
+		slog.Error("failed to open database", "error", err)
+       os.Exit(1)
 	}
 
-	log.Printf("connecting to Nexa at %s", viper.GetString("nexa.address"))
+	slog.Info("connecting to nexa", "address", viper.GetString("nexa.address"))
 
 	nexaConfig := nexa.NewNexaConfig()
 	nexaConfig.Username = viper.GetString("nexa.username")
@@ -78,6 +80,7 @@ func main() {
 	server.NexaService = nexa.NewNexaService(nxa)
 
 	if err := server.Serve(); err != nil {
-		log.Fatal(err)
+		slog.Error("server crashed", "error", err)
+		os.Exit(1)
 	}
 }

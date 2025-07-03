@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 
 	"github.com/maehler/goblin"
@@ -97,7 +97,7 @@ func rooms(ctx context.Context, tx *sql.Tx, filter goblin.RoomFilter) ([]*goblin
 }
 
 func createRoom(ctx context.Context, tx *sql.Tx, room *goblin.Room) error {
-	log.Printf("inserting room %s with id %s", room.Name, room.Id)
+	slog.Debug("upserting room", "name", room.Name, "id", room.Id)
 	stmt := `INSERT OR REPLACE INTO rooms (id, name) VALUES (?, ?)`
 	_, err := tx.ExecContext(ctx, stmt, room.Id, room.Name, room.Id)
 	return err

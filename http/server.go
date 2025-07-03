@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
-	"log"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -94,7 +94,7 @@ func (s *server) roomsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.templates.ExecuteTemplate(w, "layout.tmpl", M{"rooms": rooms, "time": time.Now()}); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Println("error executing template:", err.Error())
+		slog.Error("error executing template", "error", err.Error())
 	}
 }
 
@@ -107,7 +107,7 @@ func (s *server) deviceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.templates.ExecuteTemplate(w, "device", device); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("error executing template: %s", err.Error())
+		slog.Error("error executing template", "error", err.Error())
 	}
 }
 
@@ -115,14 +115,14 @@ func (s *server) addSubscriber(subscriber *subscriber) {
 	s.subscriberMutex.Lock()
 	s.subscribers[*subscriber] = true
 	s.subscriberMutex.Unlock()
-	log.Printf("added subscriber: %s", subscriber.ip)
+	slog.Info("added subscriber", "ip", subscriber.ip)
 }
 
 func (s *server) removeSubscriber(subscriber *subscriber) {
 	s.subscriberMutex.Lock()
 	delete(s.subscribers, *subscriber)
 	s.subscriberMutex.Unlock()
-	log.Printf("removed subscriber: %s", subscriber.ip)
+	slog.Info("removed subscriber", "ip", subscriber.ip)
 }
 
 func (s *server) subscribe(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
@@ -165,7 +165,7 @@ func (s *server) subscribeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		log.Printf("error: %v", err)
+		slog.Error("error: %v", err)
 		return
 	}
 }
@@ -179,7 +179,7 @@ func (s *server) broadcast(msg *nexa.Message) error {
 	}
 
 	if !s.HasTemplate(useTemplate) {
-		log.Printf("template %q not found, ignoring message. Full message was: %#v", useTemplate, msg)
+		slog.Error("template not found, ignoring message", "template", useTemplate, "full_message", msg)
 		return nil
 	}
 
@@ -240,7 +240,7 @@ func NewServer(opts ...Option) *server {
 	options := options{}
 	for _, o := range opts {
 		if err := o(&options); err != nil {
-			log.Fatal(err)
+			slog.Error("failed to process options", "error", err)
 		}
 	}
 
@@ -251,7 +251,7 @@ func NewServer(opts ...Option) *server {
 		name = "goblin"
 	}
 
-	log.Printf("Setting home name to %q", name)
+	slog.Info("setting home name", "name", name)
 
 	var host string
 	if options.host != nil {
@@ -288,7 +288,8 @@ func NewServer(opts ...Option) *server {
 	// Static files
 	staticFS, err := fs.Sub(static, "static")
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("failed to set up static file system", "error", err)
+		panic(err)
 	}
 	fs := http.FileServer(http.FS(staticFS))
 	s.mux.Handle("GET /", fs)
@@ -297,14 +298,14 @@ func NewServer(opts ...Option) *server {
 }
 
 func (s *server) Serve() error {
-	log.Printf("Starting server on %s:%d", s.host, s.port)
+	slog.Info("starting server", "host", s.host, "port", s.port)
 
 	if s.NexaService.Nexa != nil {
 		go func(messages chan nexa.Message) {
 			for msg := range messages {
-				log.Printf("broadcasting to %d subscribers: %s", len(s.subscribers), msg)
+				slog.Info("broadcasting subscribers", "count", len(s.subscribers), "message", msg)
 				if err := s.broadcast(&msg); err != nil {
-					log.Println("broadcast error:", err.Error())
+					slog.Error("failed to broadcast", "error", err)
 				}
 			}
 		}(s.NexaService.Nexa.Messages)
@@ -318,7 +319,7 @@ func (s *server) Serve() error {
 	for _, room := range rooms {
 		r := goblin.NewRoom(room.Id, room.Name)
 		if err := s.RoomService.CreateRoom(context.Background(), &r); err != nil {
-			log.Println(err)
+			slog.Error("failed to create room", "error", err)
 		}
 	}
 
